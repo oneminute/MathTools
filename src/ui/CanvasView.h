@@ -6,6 +6,8 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
+#include "common.h"
+
 class CanvasView : public QGraphicsView
 {
     Q_OBJECT
@@ -26,6 +28,13 @@ protected:
     void zoomBy(qreal factor);
     void updateScale(qreal factor);
 
+public slots:
+    void updateToolType(ToolType toolType);
+
+private:
+    void drawGrids();
+    void drawAxes();
+    void drawEigenMatrix();
     
 private:
     bool m_init;
@@ -37,6 +46,8 @@ private:
     bool m_pressed;
 
     QMatrix2x2 m_matrix;
+
+    ToolType m_toolType;
 };
 
 #endif // CANVASVIEW_H

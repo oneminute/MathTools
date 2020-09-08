@@ -30,6 +30,7 @@ include_directories(${INCLUDE_DIRS})
 
 add_executable(MathTools
     main.cpp
+    src/common.h
     src/ui/CanvasView.h
     src/ui/CanvasView.cpp
     src/ui/MainWindow.cpp

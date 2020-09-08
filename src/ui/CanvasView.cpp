@@ -41,87 +41,16 @@ void CanvasView::paintEvent(QPaintEvent * event)
 {
     QGraphicsView::paintEvent(event);
 
-    QPainter painter(viewport());
-
-    QRectF sRect = sceneRect();
-
-    painter.setPen(QPen(Qt::black, 1, Qt::DashLine, Qt::RoundCap));
-    for (int i = m_origin.y(); i < sRect.bottom(); i += m_factor)
-    {
-        painter.drawLine(mapFromScene(QPointF(sRect.left(), i)), mapFromScene(QPointF(sRect.right(), i)));
-    }
-    for (int i = m_origin.y(); i > sRect.top(); i -= m_factor)
-    {
-        painter.drawLine(mapFromScene(QPointF(sRect.left(), i)), mapFromScene(QPointF(sRect.right(), i)));
-    }
-    for (int i = m_origin.x(); i < sRect.right(); i += m_factor)
-    {
-        painter.drawLine(mapFromScene(QPointF(i, sRect.top())), mapFromScene(QPointF(i, sRect.bottom())));
-    }
-    for (int i = m_origin.x(); i > sRect.left(); i -= m_factor)
-    {
-        painter.drawLine(mapFromScene(QPointF(i, sRect.top())), mapFromScene(QPointF(i, sRect.bottom())));
-    }
-
-    QRectF rect = mapFromScene(sRect).boundingRect();
-    QPointF origin = mapFromScene(m_origin);
-    painter.setPen(QPen(Qt::black, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
-    //painter.drawEllipse(origin, rect.width() / 4, rect.height() / 4);
-    painter.drawRect(rect);
-
-    painter.drawLine(QPointF(rect.left(), origin.y()), QPointF(rect.right(), origin.y()));
-    painter.drawLine(QPointF(origin.x(), rect.top()), QPointF(origin.x(), rect.bottom()));
-
-    painter.setPen(QPen(Qt::red, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
+    drawGrids();
+    drawAxes();
     
-    QMatrix m;
-    m.translate(origin.x(), origin.y());
-    m.scale(transform().m11(), -transform().m11());
-    painter.setMatrix(m);
-
-    m_mousePoint.setY(-m_mousePoint.y());
-    int rx = static_cast<int>(10 * rect.width() / sceneRect().width());
-    int ry = static_cast<int>(10 * rect.height() / sceneRect().height());
-    painter.setPen(QPen(Qt::darkRed, 1, Qt::SolidLine));
-    painter.drawEllipse(m_mousePoint, rx, ry);
-    qDebug() << m_mousePoint / m_factor;
-
-    Eigen::Vector2f point(m_mousePoint.x() / m_factor, m_mousePoint.y() / m_factor);
-    std::cout << "point:" << point.transpose() << std::endl;
-
-    Eigen::Matrix2f m2f;
-    m2f = Eigen::Matrix2f::Map(m_matrix.data());
-    std::cout << m2f << std::endl;
-
-    Eigen::Vector2f result = m2f * point;
-    std::cout << "result:" << point.transpose() << std::endl;
-    painter.setPen(QPen(Qt::darkGreen, 1, Qt::SolidLine));
-    painter.drawEllipse(QPointF(result.x() * m_factor, result.y() * m_factor), rx, ry);
-
-    Eigen::EigenSolver<Eigen::Matrix2f> eigensolver(m2f);
-    Eigen::Matrix2f em = eigensolver.eigenvectors().real();
-    Eigen::Vector2f ev = eigensolver.eigenvalues().real();
-    Eigen::Vector2f e1 = em.col(0);
-    Eigen::Vector2f e2 = em.col(1);
-    std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
-    std::cout << "eigen vector 2:" << e2.transpose() << std::endl;
-    std::cout << "eigen ratio:" << std::abs(ev.x() / ev.y()) << std::endl;
-    Eigen::Vector2f longVec = m2f.col(0) + m2f.col(1);
-    Eigen::Vector2f shortVec = m2f.col(0) - m2f.col(1);
-    std::cout << "vector ratio:" << std::abs(longVec.norm() / shortVec.norm()) << std::endl;
-    painter.setPen(QPen(Qt::cyan, 3, Qt::SolidLine));
-    painter.drawLine(QPointF(0, 0), QPointF(e1.x(), e1.y()) * m_factor);
-    painter.setPen(QPen(Qt::green, 3, Qt::SolidLine));
-    painter.drawLine(QPointF(0, 0), QPointF(e2.x(), e2.y()) * m_factor);
-
-    QPointF v1 = QPointF(m_matrix(0, 0), m_matrix(1, 0)) * m_factor;
-    QPointF v2 = QPointF(m_matrix(0, 1), m_matrix(1, 1)) * m_factor;
-    for (int i = -10; i < 10; i++)
+    switch (m_toolType)
     {
-        painter.setPen(QPen(Qt::red, 1, Qt::SolidLine));
-        painter.drawLine(v1 * -10 + v2 * i, v1 * 10 + v2 * i);
-        painter.setPen(QPen(Qt::blue, 1, Qt::SolidLine));
-        painter.drawLine(v2 * -10 + v1 * i, v2 * 10 + v1 * i);
+    case TT_EigenMatrix:
+        drawEigenMatrix();
+        break;
+    case TT_CovMatrix:
+        break;
     }
 }
 
@@ -176,4 +105,110 @@ void CanvasView::updateScale(qreal factor)
 {
     scale(factor, factor);
     m_scaleFactor = transform().m11();
+}
+
+void CanvasView::drawGrids()
+{
+    QPainter painter(viewport());
+    QRectF sRect = sceneRect();
+
+    painter.setPen(QPen(Qt::black, 1, Qt::DashLine, Qt::RoundCap));
+    for (int i = m_origin.y(); i < sRect.bottom(); i += m_factor)
+    {
+        painter.drawLine(mapFromScene(QPointF(sRect.left(), i)), mapFromScene(QPointF(sRect.right(), i)));
+    }
+    for (int i = m_origin.y(); i > sRect.top(); i -= m_factor)
+    {
+        painter.drawLine(mapFromScene(QPointF(sRect.left(), i)), mapFromScene(QPointF(sRect.right(), i)));
+    }
+    for (int i = m_origin.x(); i < sRect.right(); i += m_factor)
+    {
+        painter.drawLine(mapFromScene(QPointF(i, sRect.top())), mapFromScene(QPointF(i, sRect.bottom())));
+    }
+    for (int i = m_origin.x(); i > sRect.left(); i -= m_factor)
+    {
+        painter.drawLine(mapFromScene(QPointF(i, sRect.top())), mapFromScene(QPointF(i, sRect.bottom())));
+    }
+
+}
+
+void CanvasView::drawAxes()
+{   
+    QPainter painter(viewport());
+    QRectF sRect = sceneRect();
+
+    QRectF rect = mapFromScene(sRect).boundingRect();
+    QPointF origin = mapFromScene(m_origin);
+    painter.setPen(QPen(Qt::black, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
+    painter.drawRect(rect);
+
+    painter.drawLine(QPointF(rect.left(), origin.y()), QPointF(rect.right(), origin.y()));
+    painter.drawLine(QPointF(origin.x(), rect.top()), QPointF(origin.x(), rect.bottom()));
+
+
+}
+
+void CanvasView::drawEigenMatrix()
+{
+    QPainter painter(viewport());
+    painter.setPen(QPen(Qt::red, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
+    QRectF sRect = sceneRect();
+    QRectF rect = mapFromScene(sRect).boundingRect();
+    QPointF origin = mapFromScene(m_origin);
+    
+    QMatrix m;
+    m.translate(origin.x(), origin.y());
+    m.scale(transform().m11(), -transform().m11());
+    painter.setMatrix(m);
+
+    m_mousePoint.setY(-m_mousePoint.y());
+    int rx = static_cast<int>(10 * rect.width() / sceneRect().width());
+    int ry = static_cast<int>(10 * rect.height() / sceneRect().height());
+    painter.setPen(QPen(Qt::darkRed, 1, Qt::SolidLine));
+    painter.drawEllipse(m_mousePoint, rx, ry);
+    qDebug() << m_mousePoint / m_factor;
+
+    Eigen::Vector2f point(m_mousePoint.x() / m_factor, m_mousePoint.y() / m_factor);
+    std::cout << "point:" << point.transpose() << std::endl;
+
+    Eigen::Matrix2f m2f;
+    m2f = Eigen::Matrix2f::Map(m_matrix.data());
+    std::cout << m2f << std::endl;
+
+    Eigen::Vector2f result = m2f * point;
+    std::cout << "result:" << point.transpose() << std::endl;
+    painter.setPen(QPen(Qt::darkGreen, 1, Qt::SolidLine));
+    painter.drawEllipse(QPointF(result.x() * m_factor, result.y() * m_factor), rx, ry);
+
+    Eigen::EigenSolver<Eigen::Matrix2f> eigensolver(m2f);
+    Eigen::Matrix2f em = eigensolver.eigenvectors().real();
+    Eigen::Vector2f ev = eigensolver.eigenvalues().real();
+    Eigen::Vector2f e1 = em.col(0);
+    Eigen::Vector2f e2 = em.col(1);
+    std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
+    std::cout << "eigen vector 2:" << e2.transpose() << std::endl;
+    std::cout << "eigen ratio:" << std::abs(ev.x() / ev.y()) << std::endl;
+    Eigen::Vector2f longVec = m2f.col(0) + m2f.col(1);
+    Eigen::Vector2f shortVec = m2f.col(0) - m2f.col(1);
+    std::cout << "vector ratio:" << std::abs(longVec.norm() / shortVec.norm()) << std::endl;
+    painter.setPen(QPen(Qt::cyan, 3, Qt::SolidLine));
+    painter.drawLine(QPointF(0, 0), QPointF(e1.x(), e1.y()) * m_factor);
+    painter.setPen(QPen(Qt::green, 3, Qt::SolidLine));
+    painter.drawLine(QPointF(0, 0), QPointF(e2.x(), e2.y()) * m_factor);
+
+    QPointF v1 = QPointF(m_matrix(0, 0), m_matrix(1, 0)) * m_factor;
+    QPointF v2 = QPointF(m_matrix(0, 1), m_matrix(1, 1)) * m_factor;
+    for (int i = -10; i < 10; i++)
+    {
+        painter.setPen(QPen(Qt::red, 1, Qt::SolidLine));
+        painter.drawLine(v1 * -10 + v2 * i, v1 * 10 + v2 * i);
+        painter.setPen(QPen(Qt::blue, 1, Qt::SolidLine));
+        painter.drawLine(v2 * -10 + v1 * i, v2 * 10 + v1 * i);
+    }
+}
+
+void CanvasView::updateToolType(ToolType toolType)
+{
+    m_toolType = toolType;
+    update();
 }
