@@ -18,6 +18,10 @@ public:
     void setMatrix(const QMatrix2x2& matrix) { m_matrix = matrix; }
     QMatrix2x2 matrix() const { return m_matrix; }
 
+    void generateRandomPoints(int count, bool append = false);
+    void generateRandomLinePoints(int count, const QPointF& start, const QPointF& end, float radius = 0.2f, bool append = false);
+    //void generateRandomCirclePoints(int count);
+
 protected:
     virtual void paintEvent(QPaintEvent *event) override;
     virtual void mousePressEvent(QMouseEvent *event) override;
@@ -31,10 +35,12 @@ protected:
 public slots:
     void updateToolType(ToolType toolType);
 
+
 private:
     void drawGrids();
     void drawAxes();
     void drawEigenMatrix();
+    void drawCovMatrix();
     
 private:
     bool m_init;
@@ -48,6 +54,8 @@ private:
     QMatrix2x2 m_matrix;
 
     ToolType m_toolType;
+
+    QList<QPointF> m_points;
 };
 
 #endif // CANVASVIEW_H

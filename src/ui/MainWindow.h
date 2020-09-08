@@ -7,6 +7,8 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+class QActionGroup;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -17,8 +19,12 @@ public:
 
 protected slots:
     void onApply(bool checked);
+    void onToolsGroupTriggered(QAction* action);
+    void onActionGenerate(bool checked = false);
 
 private:
     Ui::MainWindow *ui;
+
+    QActionGroup* m_toolsGroup;
 };
 #endif // MAINWINDOW_H
