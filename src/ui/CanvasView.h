@@ -22,6 +22,8 @@ public:
     void generateRandomLinePoints(int count, const QPointF& start, const QPointF& end, float radius = 0.2f, bool append = false);
     //void generateRandomCirclePoints(int count);
 
+    QMatrix transformMatrix() const;
+
 protected:
     virtual void paintEvent(QPaintEvent *event) override;
     virtual void mousePressEvent(QMouseEvent *event) override;
