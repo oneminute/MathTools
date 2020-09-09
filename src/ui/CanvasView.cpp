@@ -93,9 +93,6 @@ void CanvasView::paintEvent(QPaintEvent * event)
 {
     QGraphicsView::paintEvent(event);
 
-    drawGrids();
-    drawAxes();
-    
     switch (m_toolType)
     {
     case TT_EigenMatrix:
@@ -103,6 +100,9 @@ void CanvasView::paintEvent(QPaintEvent * event)
         break;
     case TT_CovMatrix:
         drawCovMatrix();
+        break;
+    case TT_PCA:
+        drawPCA();
         break;
     }
 }
@@ -201,6 +201,9 @@ void CanvasView::drawAxes()
 
 void CanvasView::drawEigenMatrix()
 {
+    drawGrids();
+    drawAxes();
+
     QPainter painter(viewport());
     painter.setPen(QPen(Qt::red, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
     QRectF sRect = sceneRect();
@@ -336,6 +339,9 @@ void CanvasView::drawEigenMatrix()
 
 void CanvasView::drawCovMatrix()
 {
+    drawGrids();
+    drawAxes();
+
     QPainter painter(viewport());
     QRectF sRect = sceneRect();
     QRectF rect = mapFromScene(sRect).boundingRect();
@@ -388,7 +394,6 @@ void CanvasView::drawCovMatrix()
     Eigen::Vector2f ev = eigensolver.eigenvalues().real();
     Eigen::Vector2f e1 = em.col(0) * ev.x();
     Eigen::Vector2f e2 = em.col(1) * ev.y();
-    std::cout << "e1 * e2 = " << e1.dot(e2) << std::endl;
     std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
     std::cout << "eigen vector 2:" << e2.transpose() << std::endl;
     std::cout << "eigen values:" << ev.transpose() << std::endl;
@@ -396,6 +401,18 @@ void CanvasView::drawCovMatrix()
     painter.drawLine(lineCenter, lineCenter + QPointF(e1.x(), e1.y()));
     painter.setPen(QPen(Qt::blue, 3 * lineFactor, Qt::SolidLine));
     painter.drawLine(lineCenter, lineCenter + QPointF(e2.x(), e2.y()));
+}
+
+void CanvasView::drawPCA()
+{
+    QPainter painter(viewport());
+    QTransform t(transform());
+    t.translate(0, 0);
+
+    painter.setTransform(transform());
+    painter.drawImage(QPoint(), m_imageRaw);
+    painter.drawImage(QPoint() + QPoint(m_imageRaw.width() + 5, 0), m_encodered);
+    painter.drawImage(QPoint() + QPoint(0, m_imageRaw.height() + 5), m_decodered);
 }
 
 void CanvasView::updateToolType(ToolType toolType)

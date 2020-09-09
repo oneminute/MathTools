@@ -3,9 +3,14 @@
 #include "CanvasView.h"
 
 #include <QActionGroup>
+#include <QFileDialog>
 #include <QGenericMatrix>
+#include <QImage>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QtMath>
+
+#include <opencv2/opencv.hpp>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,8 +21,10 @@ MainWindow::MainWindow(QWidget *parent)
     m_toolsGroup = new QActionGroup(this);
     m_toolsGroup->addAction(ui->actionEigenMatrixTool);
     m_toolsGroup->addAction(ui->actionCovMatrixTool);
+    m_toolsGroup->addAction(ui->actionPCATool);
 
     ui->toolButtonGenerate->setDefaultAction(ui->actionGenerate);
+    ui->toolButtonOpenImage->setDefaultAction(ui->actionOpenImage);
 
     QMatrix2x2 matrix = ui->graphicsViewCanvas->matrix();
     ui->lineEdit00->setText(QString::number(matrix(0, 0)));
@@ -28,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->pushButtonApply, &QPushButton::clicked, this, &MainWindow::onApply);
     connect(m_toolsGroup, &QActionGroup::triggered, this, &MainWindow::onToolsGroupTriggered);
     connect(ui->actionGenerate, &QAction::triggered, this, &MainWindow::onActionGenerate);
+    connect(ui->actionOpenImage, &QAction::triggered, this, &MainWindow::onActionOpenImage);
 
     ui->graphicsViewCanvas->updateToolType(TT_EigenMatrix);
 }
@@ -49,6 +57,10 @@ void MainWindow::onToolsGroupTriggered(QAction * action)
         //ui->graphicsViewCanvas->setPointsCount(ui->spinBoxCount->value());
         ui->graphicsViewCanvas->updateToolType(TT_CovMatrix);
     }
+    else if (action == ui->actionPCATool)
+    {
+        ui->graphicsViewCanvas->updateToolType(TT_PCA);
+    }
 }
 
 void MainWindow::onActionGenerate(bool checked)
@@ -64,6 +76,92 @@ void MainWindow::onActionGenerate(bool checked)
         float radius = ui->doubleSpinBoxRandRadius->value();
         ui->graphicsViewCanvas->generateRandomLinePoints(ui->spinBoxCount->value(),
             start, end, radius, ui->checkBoxAppend->isChecked());
+    }
+}
+
+void MainWindow::onActionOpenImage(bool checked)
+{
+    QString filename = QFileDialog::getOpenFileName(this,
+        tr("Open Image"), tr("."), tr("Image (*.png *.bmp *.jpeg);;"));
+
+    if (!filename.isNull() && !filename.isEmpty())
+    {
+        QImage image(filename);
+        ui->graphicsViewCanvas->setImageRaw(image);
+
+        int total = image.width() * image.height();
+        Eigen::MatrixXf X;
+        X.resize(3, total);
+        for (int i = 0; i < image.height(); i++)
+        {
+            for (int j = 0; j < image.width(); j++)
+            {
+                QRgb rgb = image.pixel(j, i);
+                Eigen::Vector3f x;
+                x.x() = qRed(rgb);
+                x.y() = qGreen(rgb);
+                x.z() = qBlue(rgb);
+                X.col(i * image.width() + j) = x;
+            }
+        }
+
+        Eigen::Matrix3f M = X * X.transpose();
+        Eigen::EigenSolver<Eigen::Matrix3f> eigensolver(M);
+        Eigen::Matrix3f em = eigensolver.eigenvectors().real();
+        Eigen::Vector3f ev = eigensolver.eigenvalues().real();
+        Eigen::Vector3f e1 = em.col(0) * ev.x();
+        Eigen::Vector3f d = e1.normalized();
+
+        std::cout << "M" << std::endl;
+        std::cout << M << std::endl;
+        std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
+        std::cout << "d:" << d.transpose() << std::endl;
+        std::cout << "dT * d:" << (d.transpose() * d) << std::endl;
+
+        Eigen::Vector3f white(255, 255, 255);
+        float max = white.transpose() * d;
+        float min = 0;
+
+        QImage encodered(image.width(), image.height(), QImage::Format::Format_Grayscale8);
+        cv::Mat mat(image.height(), image.width(), CV_32F);
+        for (int i = 0; i < image.height(); i++)
+        {
+            for (int j = 0; j < image.width(); j++)
+            {
+                QRgb rgb = image.pixel(j, i);
+                Eigen::Vector3f x;
+                x.x() = qRed(rgb);
+                x.y() = qGreen(rgb);
+                x.z() = qBlue(rgb);
+
+                float output = d.transpose() * x;
+                mat.ptr<float>(i)[j] = output;
+                int gray = output * 255 / max;
+                encodered.setPixelColor(j, i, QColor::fromRgb(gray, gray, gray));
+            }
+        }
+
+        ui->graphicsViewCanvas->setEncodered(encodered);
+
+        //Eigen::Matrix3f dM = d * d.transpose();
+        QImage decodered(image.width(), image.height(), QImage::Format::Format_RGB888);
+        for (int i = 0; i < image.height(); i++)
+        {
+            for (int j = 0; j < image.width(); j++)
+            {
+                float input = mat.ptr<float>(i)[j];
+                Eigen::Vector3f output = d * input;
+
+                output.x() = qBound(0.f, output.x(), 255.f);
+                output.y() = qBound(0.f, output.y(), 255.f);
+                output.z() = qBound(0.f, output.z(), 255.f);
+
+                decodered.setPixelColor(j, i, QColor::fromRgb(output.x(), output.y(), output.z()));
+            }
+        }
+
+        ui->graphicsViewCanvas->setDecodered(decodered);
+        ui->graphicsViewCanvas->scene()->update();
     }
 }
 

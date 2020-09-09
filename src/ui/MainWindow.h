@@ -21,6 +21,7 @@ protected slots:
     void onApply(bool checked);
     void onToolsGroupTriggered(QAction* action);
     void onActionGenerate(bool checked = false);
+    void onActionOpenImage(bool checked = false);
 
 private:
     Ui::MainWindow *ui;

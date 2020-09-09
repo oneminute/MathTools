@@ -24,6 +24,10 @@ public:
 
     QMatrix transformMatrix() const;
 
+    void setImageRaw(const QImage& image) { m_imageRaw = image; }
+    void setEncodered(const QImage& image) { m_encodered = image; }
+    void setDecodered(const QImage& image) { m_decodered = image; }
+
 protected:
     virtual void paintEvent(QPaintEvent *event) override;
     virtual void mousePressEvent(QMouseEvent *event) override;
@@ -43,6 +47,7 @@ private:
     void drawAxes();
     void drawEigenMatrix();
     void drawCovMatrix();
+    void drawPCA();
     
 private:
     bool m_init;
@@ -58,6 +63,10 @@ private:
     ToolType m_toolType;
 
     QList<QPointF> m_points;
+
+    QImage m_imageRaw;
+    QImage m_encodered;
+    QImage m_decodered;
 };
 
 #endif // CANVASVIEW_H

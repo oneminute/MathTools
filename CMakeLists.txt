@@ -17,6 +17,7 @@ find_package(OpenCV REQUIRED)
 
 set(LINK_LIBRARIES
 	Qt5::Widgets Qt5::Charts Qt5::OpenGL
+    ${OpenCV_LIBRARIES} 
 )
 
 set(INCLUDE_DIRS
