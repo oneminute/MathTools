@@ -22,9 +22,11 @@ MainWindow::MainWindow(QWidget *parent)
     m_toolsGroup->addAction(ui->actionEigenMatrixTool);
     m_toolsGroup->addAction(ui->actionCovMatrixTool);
     m_toolsGroup->addAction(ui->actionPCATool);
+    m_toolsGroup->addAction(ui->actionProbabilityTool);
 
     ui->toolButtonGenerate->setDefaultAction(ui->actionGenerate);
     ui->toolButtonOpenImage->setDefaultAction(ui->actionOpenImage);
+    ui->toolButtonShowDistribution->setDefaultAction(ui->actionShowDistribution);
 
     QMatrix2x2 matrix = ui->graphicsViewCanvas->matrix();
     ui->lineEdit00->setText(QString::number(matrix(0, 0)));
@@ -36,8 +38,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_toolsGroup, &QActionGroup::triggered, this, &MainWindow::onToolsGroupTriggered);
     connect(ui->actionGenerate, &QAction::triggered, this, &MainWindow::onActionGenerate);
     connect(ui->actionOpenImage, &QAction::triggered, this, &MainWindow::onActionOpenImage);
+    connect(ui->actionShowDistribution, &QAction::triggered, this, &MainWindow::showDistribution);
 
     ui->graphicsViewCanvas->updateToolType(TT_EigenMatrix);
+
+    ui->comboBoxDistributionType->addItem("Bernoulli", DT_BERNOULLI);
+    ui->comboBoxDistributionType->addItem("Multinoulli", DT_MULTINOULLI);
+    ui->comboBoxDistributionType->addItem("Normal", DT_NORMAL);
+
+    showDistribution();
 }
 
 MainWindow::~MainWindow()
@@ -54,12 +63,15 @@ void MainWindow::onToolsGroupTriggered(QAction * action)
     }
     else if (action == ui->actionCovMatrixTool)
     {
-        //ui->graphicsViewCanvas->setPointsCount(ui->spinBoxCount->value());
         ui->graphicsViewCanvas->updateToolType(TT_CovMatrix);
     }
     else if (action == ui->actionPCATool)
     {
         ui->graphicsViewCanvas->updateToolType(TT_PCA);
+    }
+    else if (action == ui->actionProbabilityTool)
+    {
+        ui->graphicsViewCanvas->updateToolType(TT_Probability);
     }
 }
 
@@ -162,6 +174,36 @@ void MainWindow::onActionOpenImage(bool checked)
 
         ui->graphicsViewCanvas->setDecodered(decodered);
         ui->graphicsViewCanvas->scene()->update();
+    }
+}
+
+void MainWindow::showDistribution(bool ckecked)
+{
+    DistributionType type = static_cast<DistributionType>(ui->comboBoxDistributionType->currentData(Qt::UserRole).toInt());
+
+    ui->graphicsViewCanvas->updateDistributionType(type);
+
+    ui->graphicsViewCanvas->setBernoulliProbability(ui->doubleSpinBoxBernoulliProbability->value());
+    ui->graphicsViewCanvas->setBernoulliCount(ui->spinBoxBernoulliCount->value());
+    ui->graphicsViewCanvas->setNormalU(ui->doubleSpinBoxNormalU->value());
+    ui->graphicsViewCanvas->setNormalSigma(ui->doubleSpinBoxNormalSigma->value());
+
+    ui->graphicsViewCanvas->scene()->update();
+}
+
+void MainWindow::onComboBoxDistributionTypeChanged(int index)
+{
+    DistributionType type = static_cast<DistributionType>(ui->comboBoxDistributionType->currentData(Qt::UserRole).toInt());
+
+    ui->groupBoxBernoulli->setVisible(false);
+    ui->groupBoxNormal->setVisible(false);
+    if (type == DT_BERNOULLI)
+    {
+        ui->groupBoxBernoulli->setVisible(true);
+    }
+    else if (type == DT_NORMAL)
+    {
+        ui->groupBoxNormal->setVisible(true);
     }
 }
 

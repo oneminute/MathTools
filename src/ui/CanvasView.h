@@ -22,11 +22,26 @@ public:
     void generateRandomLinePoints(int count, const QPointF& start, const QPointF& end, float radius = 0.2f, bool append = false);
     //void generateRandomCirclePoints(int count);
 
-    QMatrix transformMatrix() const;
+    QMatrix fromSceneMatrix() const;
+    QMatrix toSceneMatrix() const;
+    qreal lineFactor() const;
+    qreal lineWidth(qreal width = 1.0f) const;
 
     void setImageRaw(const QImage& image) { m_imageRaw = image; }
     void setEncodered(const QImage& image) { m_encodered = image; }
     void setDecodered(const QImage& image) { m_decodered = image; }
+
+    void setBernoulliProbability(qreal probability) { m_bernoulliProbability = probability; }
+    qreal bernoulliProbability() const { return m_bernoulliProbability; }
+
+    void setBernoulliCount(int count) { m_bernoulliCount = count; }
+    int bernoulliCount() { return m_bernoulliCount; }
+
+    void setNormalU(qreal u) { m_normalU = u; }
+    qreal normalU() const { return m_normalU; }
+
+    void setNormalSigma(qreal sigma) { m_normalSigma = sigma; }
+    qreal normalSigma() const { return m_normalSigma; }
 
 protected:
     virtual void paintEvent(QPaintEvent *event) override;
@@ -38,9 +53,10 @@ protected:
     void zoomBy(qreal factor);
     void updateScale(qreal factor);
 
+
 public slots:
     void updateToolType(ToolType toolType);
-
+    void updateDistributionType(DistributionType distributionType);
 
 private:
     void drawGrids();
@@ -48,6 +64,9 @@ private:
     void drawEigenMatrix();
     void drawCovMatrix();
     void drawPCA();
+    void drawProbability();
+    void drawBernoulli();
+    void drawNormal();
     
 private:
     bool m_init;
@@ -67,6 +86,13 @@ private:
     QImage m_imageRaw;
     QImage m_encodered;
     QImage m_decodered;
+
+    DistributionType m_distributionType;
+    qreal m_bernoulliProbability;
+    int m_bernoulliCount;
+
+    qreal m_normalU;
+    qreal m_normalSigma;
 };
 
 #endif // CANVASVIEW_H

@@ -22,6 +22,9 @@ protected slots:
     void onToolsGroupTriggered(QAction* action);
     void onActionGenerate(bool checked = false);
     void onActionOpenImage(bool checked = false);
+    void showDistribution(bool ckecked = false);
+
+    void onComboBoxDistributionTypeChanged(int index);
 
 private:
     Ui::MainWindow *ui;

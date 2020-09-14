@@ -80,13 +80,31 @@ void CanvasView::generateRandomLinePoints(int count, const QPointF& start, const
     scene()->update();
 }
 
-QMatrix CanvasView::transformMatrix() const
+QMatrix CanvasView::fromSceneMatrix() const
 {
     QPointF origin = mapFromScene(m_origin);
     QTransform t(transform());
     QMatrix m(m_factor, 0, 0, -m_factor, origin.x(), origin.y());
     m = t.toAffine() * m;
     return m;
+}
+
+QMatrix CanvasView::toSceneMatrix() const
+{
+    QMatrix matrix;
+    matrix.scale(1.0 / m_factor, -1.0 / m_factor);
+    matrix.translate(-m_origin.x(), -m_origin.y());
+    return matrix;
+}
+
+qreal CanvasView::lineFactor() const
+{
+    return 1.0f / m_factor;
+}
+
+qreal CanvasView::lineWidth(qreal width) const
+{
+    return width * lineFactor();
 }
 
 void CanvasView::paintEvent(QPaintEvent * event)
@@ -103,6 +121,9 @@ void CanvasView::paintEvent(QPaintEvent * event)
         break;
     case TT_PCA:
         drawPCA();
+        break;
+    case TT_Probability:
+        drawProbability();
         break;
     }
 }
@@ -160,43 +181,45 @@ void CanvasView::updateScale(qreal factor)
     m_scaleFactor = transform().m11();
 }
 
+void CanvasView::updateToolType(ToolType toolType)
+{
+    m_toolType = toolType;
+    scene()->update();
+}
+
+void CanvasView::updateDistributionType(DistributionType distributionType)
+{
+    m_distributionType = distributionType;
+}
+
 void CanvasView::drawGrids()
 {
     QPainter painter(viewport());
-    QRectF sRect = sceneRect();
+    painter.setMatrix(fromSceneMatrix());
+    painter.setPen(QPen(Qt::lightGray, lineWidth(), Qt::DashLine, Qt::RoundCap));
 
-    painter.setPen(QPen(Qt::black, 1, Qt::DashLine, Qt::RoundCap));
-    for (int i = m_origin.y(); i < sRect.bottom(); i += m_factor)
+    QRectF rect = toSceneMatrix().mapRect(sceneRect());
+    for (int i = std::round(rect.left()); i <= std::round(rect.right()); i++)
     {
-        painter.drawLine(mapFromScene(QPointF(sRect.left(), i)), mapFromScene(QPointF(sRect.right(), i)));
+        painter.drawLine(QPointF(i, rect.top()), QPointF(i, rect.bottom()));
     }
-    for (int i = m_origin.y(); i > sRect.top(); i -= m_factor)
+    for (int i = std::round(rect.top()); i <= std::round(rect.bottom()); i++)
     {
-        painter.drawLine(mapFromScene(QPointF(sRect.left(), i)), mapFromScene(QPointF(sRect.right(), i)));
+        painter.drawLine(QPointF(rect.left(), i), QPointF(rect.right(), i));
     }
-    for (int i = m_origin.x(); i < sRect.right(); i += m_factor)
-    {
-        painter.drawLine(mapFromScene(QPointF(i, sRect.top())), mapFromScene(QPointF(i, sRect.bottom())));
-    }
-    for (int i = m_origin.x(); i > sRect.left(); i -= m_factor)
-    {
-        painter.drawLine(mapFromScene(QPointF(i, sRect.top())), mapFromScene(QPointF(i, sRect.bottom())));
-    }
-
 }
 
 void CanvasView::drawAxes()
 {   
     QPainter painter(viewport());
-    QRectF sRect = sceneRect();
+    painter.setMatrix(fromSceneMatrix());
+    painter.setPen(QPen(Qt::lightGray, lineWidth(2), Qt::SolidLine, Qt::PenCapStyle::RoundCap));
 
-    QRectF rect = mapFromScene(sRect).boundingRect();
-    QPointF origin = mapFromScene(m_origin);
-    painter.setPen(QPen(Qt::black, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
+    QRectF rect = toSceneMatrix().mapRect(sceneRect());
+    
     painter.drawRect(rect);
-
-    painter.drawLine(QPointF(rect.left(), origin.y()), QPointF(rect.right(), origin.y()));
-    painter.drawLine(QPointF(origin.x(), rect.top()), QPointF(origin.x(), rect.bottom()));
+    painter.drawLine(QPointF(rect.left(), 0), QPointF(rect.right(), 0));
+    painter.drawLine(QPointF(0, rect.top()), QPointF(0, rect.bottom()));
 }
 
 void CanvasView::drawEigenMatrix()
@@ -205,19 +228,13 @@ void CanvasView::drawEigenMatrix()
     drawAxes();
 
     QPainter painter(viewport());
-    painter.setPen(QPen(Qt::red, 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
-    QRectF sRect = sceneRect();
-    QRectF rect = mapFromScene(sRect).boundingRect();
-    QPointF origin = mapFromScene(m_origin);
-    qreal lineFactor = 1.0 / m_factor;
-    
-    QMatrix m = transformMatrix();
-    painter.setMatrix(m);
-    QMatrix mInv = m.inverted();
+    painter.setMatrix(fromSceneMatrix());
+
+    QRectF rect = toSceneMatrix().mapRect(sceneRect());
 
     m_mousePoint.setY(-m_mousePoint.y());
-    painter.setPen(QPen(Qt::darkRed, 2 * lineFactor, Qt::SolidLine));
-    painter.drawEllipse(m_mousePoint, 2 * lineFactor, 2 * lineFactor);
+    painter.setPen(QPen(Qt::darkRed, lineWidth(2), Qt::SolidLine));
+    painter.drawEllipse(m_mousePoint, lineWidth(2), lineWidth(2));
     painter.drawLine(QPointF(0, 0), m_mousePoint);
     qDebug() << m_mousePoint;
 
@@ -230,8 +247,8 @@ void CanvasView::drawEigenMatrix()
 
     Eigen::Vector2f result = m2f * point;
     std::cout << "result:" << point.transpose() << std::endl;
-    painter.setPen(QPen(Qt::darkGreen, 1 * lineFactor, Qt::SolidLine));
-    painter.drawEllipse(QPointF(result.x(), result.y()), 2 * lineFactor, 2 * lineFactor);
+    painter.setPen(QPen(Qt::darkGreen, lineWidth(), Qt::SolidLine));
+    painter.drawEllipse(QPointF(result.x(), result.y()), lineWidth(2), lineWidth(2));
     painter.drawLine(QPointF(0, 0), QPointF(result.x(), result.y()));
 
     Eigen::EigenSolver<Eigen::Matrix2f> eigensolver(m2f);
@@ -242,12 +259,11 @@ void CanvasView::drawEigenMatrix()
     std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
     std::cout << "eigen vector 2:" << e2.transpose() << std::endl;
     std::cout << "eigen values:" << ev.transpose() << std::endl;
-    painter.setPen(QPen(Qt::red, 3 * lineFactor, Qt::SolidLine));
+    painter.setPen(QPen(Qt::red, lineWidth(3), Qt::SolidLine));
     painter.drawLine(QPointF(0, 0), QPointF(e1.x(), e1.y()));
-    painter.setPen(QPen(Qt::blue, 3 * lineFactor, Qt::SolidLine));
+    painter.setPen(QPen(Qt::blue, lineWidth(3), Qt::SolidLine));
     painter.drawLine(QPointF(0, 0), QPointF(e2.x(), e2.y()));
 
-    //rect = mInv.mapRect(sRect);
     rect = QRectF(-10, -10, 20, 20);
     QPointF v1 = QPointF(m_matrix(0, 0), m_matrix(1, 0));
     QPointF v2 = QPointF(m_matrix(0, 1), m_matrix(1, 1));
@@ -305,36 +321,45 @@ void CanvasView::drawEigenMatrix()
 
         if (intersects1.size() >= 2)
         {
-            painter.setPen(QPen(Qt::cyan, 2 * lineFactor, Qt::SolidLine));
+            painter.setPen(QPen(Qt::cyan, lineWidth(2), Qt::SolidLine));
             painter.drawLine(intersects1[0], intersects1[1]);
         }
 
         if (intersects2.size() >= 2)
         {
-            painter.setPen(QPen(Qt::cyan, 2 * lineFactor, Qt::SolidLine));
+            painter.setPen(QPen(Qt::cyan, lineWidth(2), Qt::SolidLine));
             painter.drawLine(intersects2[0], intersects2[1]);
         }
 
         if (intersects3.size() >= 2)
         {
-            painter.setPen(QPen(Qt::lightGray, 2 * lineFactor, Qt::SolidLine));
+            painter.setPen(QPen(Qt::lightGray, lineWidth(2), Qt::SolidLine));
             painter.drawLine(intersects3[0], intersects3[1]);
         }
 
         if (intersects4.size() >= 2)
         {
-            painter.setPen(QPen(Qt::lightGray, 2 * lineFactor, Qt::SolidLine));
+            painter.setPen(QPen(Qt::lightGray, lineWidth(2), Qt::SolidLine));
             painter.drawLine(intersects4[0], intersects4[1]);
         }
         count++;
     }
-    /*for (int i = -10; i < 10; i++)
+
+    int lineCount = 360;
+    qreal tick = 360.0f / lineCount;
+    for (int i = 0; i < lineCount; i++)
     {
-        painter.setPen(QPen(Qt::cyan, 1 * lineFactor, Qt::SolidLine));
-        painter.drawLine(v1 * -10 + v2 * i, v1 * 10 + v2 * i);
-        painter.setPen(QPen(Qt::lightGray, 1 * lineFactor, Qt::SolidLine));
-        painter.drawLine(v2 * -10 + v1 * i, v2 * 10 + v1 * i);
-    }*/
+        QColor color(QColor::Hsl);
+        color.setHsvF(i * 1.0f / lineCount, 1, 1);
+        qreal angle = M_PI / 180.0 * i * tick;
+        Eigen::Vector2f point(qCos(angle), qSin(angle));
+        Eigen::Vector2f transformedPoint = m2f * point;
+
+        painter.setPen(QPen(color, lineWidth(1)));
+        painter.drawLine(QPointF(point.x(), point.y()), QPointF(transformedPoint.x(), transformedPoint.y()));
+    }
+    painter.setPen(QPen(Qt::black, lineWidth()));
+    painter.drawEllipse(QPoint(0, 0), 1, 1);
 }
 
 void CanvasView::drawCovMatrix()
@@ -359,7 +384,6 @@ void CanvasView::drawCovMatrix()
     Eigen::Vector2f center(Eigen::Vector2f::Zero());
     for (QPointF pt : m_points)
     {
-        //painter.setPen(QPen(QColor::fromRgb(QRandomGenerator::global()->generate()), 2, Qt::SolidLine, Qt::PenCapStyle::RoundCap));
         painter.setPen(QPen(Qt::black, 2 * lineFactor, Qt::NoPen, Qt::PenCapStyle::RoundCap));
         painter.setBrush(Qt::darkYellow);
 
@@ -395,7 +419,6 @@ void CanvasView::drawCovMatrix()
     Eigen::Vector2f e1 = em.col(0) * ev.x();
     Eigen::Vector2f e2 = em.col(1) * ev.y();
     std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
-    std::cout << "eigen vector 2:" << e2.transpose() << std::endl;
     std::cout << "eigen values:" << ev.transpose() << std::endl;
     painter.setPen(QPen(Qt::red, 3 * lineFactor, Qt::SolidLine));
     painter.drawLine(lineCenter, lineCenter + QPointF(e1.x(), e1.y()));
@@ -406,17 +429,70 @@ void CanvasView::drawCovMatrix()
 void CanvasView::drawPCA()
 {
     QPainter painter(viewport());
-    QTransform t(transform());
-    t.translate(0, 0);
+    QPoint origin(0, 0);
+    origin = mapFromScene(origin);
 
     painter.setTransform(transform());
-    painter.drawImage(QPoint(), m_imageRaw);
-    painter.drawImage(QPoint() + QPoint(m_imageRaw.width() + 5, 0), m_encodered);
-    painter.drawImage(QPoint() + QPoint(0, m_imageRaw.height() + 5), m_decodered);
+    painter.drawImage(origin, m_imageRaw);
+    painter.drawImage(origin + QPoint(m_imageRaw.width() + 5, 0), m_encodered);
+    painter.drawImage(origin + QPoint(0, m_imageRaw.height() + 5), m_decodered);
 }
 
-void CanvasView::updateToolType(ToolType toolType)
+void CanvasView::drawProbability()
 {
-    m_toolType = toolType;
-    scene()->update();
+    switch (m_distributionType)
+    {
+    case DT_BERNOULLI:
+        drawBernoulli();
+        break;
+    case DT_MULTINOULLI:
+        break;
+    case DT_NORMAL:
+        drawNormal();
+        break;
+    }
 }
+
+void CanvasView::drawBernoulli()
+{
+    QPointF oldOrigin = m_origin;
+    QRectF rect = sceneRect();
+    m_origin = QPointF(0, rect.height());
+    drawGrids();
+    drawAxes();
+
+    QPainter painter(viewport());
+    painter.setMatrix(fromSceneMatrix());
+    painter.setPen(QPen(Qt::blue, lineWidth(1)));
+
+    for (int i = 0; i <= m_bernoulliCount; i++)
+    {
+        qreal value = qPow(m_bernoulliProbability, i) * (qPow(1 - m_bernoulliProbability, m_bernoulliCount - i));
+        painter.drawLine(QPointF(i / 10.0, 0), QPointF(i / 10.0, value * 100));
+    }
+
+    m_origin = oldOrigin;
+}
+
+void CanvasView::drawNormal()
+{
+    //QPointF oldOrigin = m_origin;
+    //QRectF rect = sceneRect();
+    //m_origin = QPointF(rect.width() / 2, rect.height());
+    drawGrids();
+    drawAxes();
+
+    QPainter painter(viewport());
+    painter.setMatrix(fromSceneMatrix());
+    painter.setPen(QPen(Qt::blue, lineWidth(1)));
+
+    qreal delta = 0.05f;
+    for (qreal i = -10; i <= 10; i += delta)
+    {
+        qreal value = qSqrt(1 / (2 * M_PI * m_normalSigma * m_normalSigma)) * qExp(-1.0f / (2 * m_normalSigma * m_normalSigma) * (i - m_normalU) * (i - m_normalU));
+        painter.drawLine(QPointF(i, 0), QPointF(i, value * 10));
+    }
+
+    //m_origin = oldOrigin;
+}
+
