@@ -13,7 +13,8 @@ enum DistributionType
 {
     DT_BERNOULLI = 0,
     DT_MULTINOULLI,
-    DT_NORMAL
+    DT_NORMAL,
+    DT_NORMAL2D
 };
 
 #endif // COMMON_H

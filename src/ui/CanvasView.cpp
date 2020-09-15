@@ -7,6 +7,7 @@
 #include <QtMath>
 #include <QWheelEvent>
 #include <iostream>
+#include <QVector3D>
 
 CanvasView::CanvasView(QWidget* parent)
     : QGraphicsView(parent)
@@ -450,7 +451,11 @@ void CanvasView::drawProbability()
     case DT_NORMAL:
         drawNormal();
         break;
+    case DT_NORMAL2D:
+        drawNormal2D();
+        break;
     }
+
 }
 
 void CanvasView::drawBernoulli()
@@ -465,11 +470,18 @@ void CanvasView::drawBernoulli()
     painter.setMatrix(fromSceneMatrix());
     painter.setPen(QPen(Qt::blue, lineWidth(1)));
 
-    for (int i = 0; i <= m_bernoulliCount; i++)
+    for (int i = 0; i < m_samples.size(); i++)
     {
-        qreal value = qPow(m_bernoulliProbability, i) * (qPow(1 - m_bernoulliProbability, m_bernoulliCount - i));
-        painter.drawLine(QPointF(i / 10.0, 0), QPointF(i / 10.0, value * 100));
+        QVector2D point = m_samples[i];
+        painter.drawLine(QPointF(point.x() / 10.0, 0), QPointF(point.x(), point.y() * 100));
     }
+
+    painter.setPen(QPen(Qt::red, lineWidth(1)));
+    painter.drawLine(QPointF(rect.left(), m_avg * 100), QPointF(rect.right(), m_avg * 100));
+    painter.setPen(QPen(Qt::green, lineWidth(1)));
+    painter.drawLine(QPointF(rect.left(), m_var * 100), QPointF(rect.right(), m_var * 100));
+    painter.setPen(QPen(Qt::darkYellow, lineWidth(1)));
+    painter.drawLine(QPointF(rect.left(), m_std * 100), QPointF(rect.right(), m_std * 100));
 
     m_origin = oldOrigin;
 }
@@ -486,13 +498,41 @@ void CanvasView::drawNormal()
     painter.setMatrix(fromSceneMatrix());
     painter.setPen(QPen(Qt::blue, lineWidth(1)));
 
-    qreal delta = 0.05f;
-    for (qreal i = -10; i <= 10; i += delta)
+    for (int i = 0; i < m_samples.size(); i++)
     {
-        qreal value = qSqrt(1 / (2 * M_PI * m_normalSigma * m_normalSigma)) * qExp(-1.0f / (2 * m_normalSigma * m_normalSigma) * (i - m_normalU) * (i - m_normalU));
-        painter.drawLine(QPointF(i, 0), QPointF(i, value * 10));
+        QVector2D point = m_samples[i];
+        painter.drawLine(QPointF(point.x(), 0), QPointF(point.x(), point.y() * 10));
     }
 
+    QRectF rect = toSceneMatrix().mapRect(sceneRect());
+    painter.setPen(QPen(Qt::red, lineWidth(1)));
+    painter.drawLine(QPointF(rect.left(), m_avg * 10), QPointF(rect.right(), m_avg * 10));
+    painter.setPen(QPen(Qt::green, lineWidth(1)));
+    painter.drawLine(QPointF(rect.left(), m_var * 10), QPointF(rect.right(), m_var * 10));
+    painter.setPen(QPen(Qt::darkYellow, lineWidth(1)));
+    painter.drawLine(QPointF(rect.left(), m_std * 10), QPointF(rect.right(), m_std * 10));
     //m_origin = oldOrigin;
+}
+
+void CanvasView::drawNormal2D()
+{
+    drawGrids();
+    drawAxes();
+
+    QPainter painter(viewport());
+    painter.setMatrix(fromSceneMatrix());
+    painter.setPen(QPen(Qt::blue, lineWidth(1)));
+
+    for (int i = 0; i < m_samples3D.size(); i++)
+    {
+        QVector3D sample = m_samples3D[i];
+        //qDebug() << sample;
+        QColor color(QColor::Hsv);
+        color.setHsvF(sample.z(), 1, 1);
+        painter.setPen(QPen(color, 1, Qt::NoPen));
+        painter.setBrush(QBrush(color));
+        //painter.drawLine(QPointF(point.x(), 0), QPointF(point.x(), point.y() * 10));
+        painter.drawEllipse(QPointF(sample.x() * 10, sample.y() * 10), lineWidth(1), lineWidth(1));
+    }
 }
 

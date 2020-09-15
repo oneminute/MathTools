@@ -3,6 +3,8 @@
 
 #include <QGraphicsView>
 #include <QGenericMatrix> 
+#include <QVector2D>
+#include <QVector3D>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
@@ -31,17 +33,11 @@ public:
     void setEncodered(const QImage& image) { m_encodered = image; }
     void setDecodered(const QImage& image) { m_decodered = image; }
 
-    void setBernoulliProbability(qreal probability) { m_bernoulliProbability = probability; }
-    qreal bernoulliProbability() const { return m_bernoulliProbability; }
-
-    void setBernoulliCount(int count) { m_bernoulliCount = count; }
-    int bernoulliCount() { return m_bernoulliCount; }
-
-    void setNormalU(qreal u) { m_normalU = u; }
-    qreal normalU() const { return m_normalU; }
-
-    void setNormalSigma(qreal sigma) { m_normalSigma = sigma; }
-    qreal normalSigma() const { return m_normalSigma; }
+    void setSamples(const QList<QVector2D>& samples) { m_samples = samples; }
+    void setAvg(qreal avg) { m_avg = avg; }
+    void setVar(qreal var) { m_var = var; }
+    void setStd(qreal std) { m_std = std; }
+    void setSamples3D(const QList<QVector3D>& samples) { m_samples3D = samples; }
 
 protected:
     virtual void paintEvent(QPaintEvent *event) override;
@@ -67,6 +63,7 @@ private:
     void drawProbability();
     void drawBernoulli();
     void drawNormal();
+    void drawNormal2D();
     
 private:
     bool m_init;
@@ -88,11 +85,12 @@ private:
     QImage m_decodered;
 
     DistributionType m_distributionType;
-    qreal m_bernoulliProbability;
-    int m_bernoulliCount;
 
-    qreal m_normalU;
-    qreal m_normalSigma;
+    QList<QVector2D> m_samples;
+    qreal m_avg;
+    qreal m_var;
+    qreal m_std;
+    QList<QVector3D> m_samples3D;
 };
 
 #endif // CANVASVIEW_H
