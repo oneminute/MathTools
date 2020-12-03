@@ -234,10 +234,6 @@ void CanvasView::drawEigenMatrix()
     QRectF rect = toSceneMatrix().mapRect(sceneRect());
 
     m_mousePoint.setY(-m_mousePoint.y());
-    painter.setPen(QPen(Qt::darkRed, lineWidth(2), Qt::SolidLine));
-    painter.drawEllipse(m_mousePoint, lineWidth(2), lineWidth(2));
-    painter.drawLine(QPointF(0, 0), m_mousePoint);
-    qDebug() << m_mousePoint;
 
     Eigen::Vector2f point(m_mousePoint.x(), m_mousePoint.y());
     std::cout << "point:" << point.transpose() << std::endl;
@@ -247,10 +243,7 @@ void CanvasView::drawEigenMatrix()
     std::cout << m2f << std::endl;
 
     Eigen::Vector2f result = m2f * point;
-    std::cout << "result:" << point.transpose() << std::endl;
-    painter.setPen(QPen(Qt::darkGreen, lineWidth(), Qt::SolidLine));
-    painter.drawEllipse(QPointF(result.x(), result.y()), lineWidth(2), lineWidth(2));
-    painter.drawLine(QPointF(0, 0), QPointF(result.x(), result.y()));
+    
 
     Eigen::EigenSolver<Eigen::Matrix2f> eigensolver(m2f);
     Eigen::Matrix2f em = eigensolver.eigenvectors().real();
@@ -260,10 +253,6 @@ void CanvasView::drawEigenMatrix()
     std::cout << "eigen vector 1:" << e1.transpose() << std::endl;
     std::cout << "eigen vector 2:" << e2.transpose() << std::endl;
     std::cout << "eigen values:" << ev.transpose() << std::endl;
-    painter.setPen(QPen(Qt::red, lineWidth(3), Qt::SolidLine));
-    painter.drawLine(QPointF(0, 0), QPointF(e1.x(), e1.y()));
-    painter.setPen(QPen(Qt::blue, lineWidth(3), Qt::SolidLine));
-    painter.drawLine(QPointF(0, 0), QPointF(e2.x(), e2.y()));
 
     rect = QRectF(-10, -10, 20, 20);
     QPointF v1 = QPointF(m_matrix(0, 0), m_matrix(1, 0));
@@ -361,6 +350,20 @@ void CanvasView::drawEigenMatrix()
     }
     painter.setPen(QPen(Qt::black, lineWidth()));
     painter.drawEllipse(QPoint(0, 0), 1, 1);
+
+    painter.setPen(QPen(Qt::red, lineWidth(3), Qt::SolidLine));
+    painter.drawLine(QPointF(0, 0), QPointF(e1.x(), e1.y()));
+    painter.setPen(QPen(Qt::blue, lineWidth(3), Qt::SolidLine));
+    painter.drawLine(QPointF(0, 0), QPointF(e2.x(), e2.y()));
+
+    painter.setPen(QPen(Qt::darkRed, lineWidth(2), Qt::SolidLine));
+    painter.drawEllipse(m_mousePoint, lineWidth(2), lineWidth(2));
+    painter.drawLine(QPointF(0, 0), m_mousePoint);
+    qDebug() << m_mousePoint;
+    std::cout << "result:" << point.transpose() << std::endl;
+    painter.setPen(QPen(Qt::red, lineWidth(2), Qt::SolidLine));
+    painter.drawEllipse(QPointF(result.x(), result.y()), lineWidth(2), lineWidth(2));
+    painter.drawLine(QPointF(0, 0), QPointF(result.x(), result.y()));
 }
 
 void CanvasView::drawCovMatrix()
@@ -528,7 +531,7 @@ void CanvasView::drawNormal2D()
         QVector3D sample = m_samples3D[i];
         //qDebug() << sample;
         QColor color(QColor::Hsv);
-        color.setHsvF(sample.z(), 1, 1);
+        color.setHsvF(1 - sample.z() / 2, 1, 1);
         painter.setPen(QPen(color, 1, Qt::NoPen));
         painter.setBrush(QBrush(color));
         //painter.drawLine(QPointF(point.x(), 0), QPointF(point.x(), point.y() * 10));
